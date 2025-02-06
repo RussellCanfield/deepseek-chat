@@ -76,9 +76,17 @@ class ModelWorker {
 
       console.log('Tokenizer loaded');
 
+      //@ts-expect-error
+      const device = await navigator.gpu?.requestAdapter()
+        //@ts-expect-error
+        .then(adapter => adapter?.requestDevice())
+        .catch(() => null);
+
+      console.log('Defaulting to:', device ? 'webgpu' : 'cpu');
+
       this.model = await AutoModelForCausalLM.from_pretrained(ModelWorker.MODEL_ID, {
         dtype: 'q4f16',
-        device: 'webgpu',
+        device: device ? 'webgpu' : 'cpu',
         use_external_data_format: {
           'model.onnx_data': true,
         },

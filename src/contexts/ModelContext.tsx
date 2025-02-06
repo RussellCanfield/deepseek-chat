@@ -36,12 +36,12 @@ export const ModelProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     const handleWorkerMessage = (event: MessageEvent<StatusEvent | TokenEvent>) => {
-      const { type } = event.data as StatusEvent;
+      const { type, name } = event.data as StatusEvent;
 
       if (type === 'status') {
-        const { progress, name } = event.data as StatusEvent;
+        const { progress } = event.data as StatusEvent;
         setLoadingProgress({ ...progress, name });
-        setIsLoading(progress.status !== 'done')
+        setIsLoading(!(progress.status === 'done' && name === 'Model'))
       } else if (type === 'token') {
         if (!isGenerating) {
           setIsGenerating(true);
