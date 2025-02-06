@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useModel } from '../contexts/ModelContext';
 import { ModelLoadingIndicator } from './ModelLoadingIndicator';
 import { MessageHydrator } from '../services/MessageHydrator';
 import { useThreadContext } from '../contexts/ThreadContext';
 import { MessageList } from './MessageList';
+import { ChatInput } from './ChatInput';
 
 export const ChatInterface: React.FC = () => {
-  const [input, setInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -23,10 +23,6 @@ export const ChatInterface: React.FC = () => {
 
   const { initializeModel, generateStreamingResponse, loadingProgress, isLoading } = useModel();
 
-  // useEffect(() => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  // }, [currentThread?.messages]);
-
   useEffect(() => {
     const handleWorkerMessage = (event: CustomEvent<string>) => {
       if (hydratorRef.current) {
@@ -37,28 +33,30 @@ export const ChatInterface: React.FC = () => {
     const handleStreamFinished = () => {
       if (!hydratorRef.current) return;
 
-      if (newMessageRef.current) {
-        newMessageRef.current.remove();
-      }
-
-      addMessage(activeThread?.id!, {
-        role: "assistant",
-        content: hydratorRef.current!.getAndClearBuffer()
-      });
+      const finalMessage = hydratorRef.current.getAndClearBuffer();
 
       if (newMessageRef.current) {
         newMessageRef.current.innerHTML = '';
       }
 
-      hydratorRef.current = null;
-    }
+      addMessage(activeThread?.id!, {
+        role: "assistant",
+        content: finalMessage
+      });
 
-    window.addEventListener('onToken', handleWorkerMessage as any);
-    window.addEventListener("done", handleStreamFinished as any);
+      hydratorRef.current = null;
+    };
+
+    const tokenHandler = handleWorkerMessage as EventListener;
+    const streamHandler = handleStreamFinished as EventListener;
+
+    window.addEventListener('onToken', tokenHandler);
+    window.addEventListener("done", streamHandler);
+
     return () => {
-      window.removeEventListener('onToken', handleWorkerMessage as any);
-      window.removeEventListener("done", handleStreamFinished as any);
-    }
+      window.removeEventListener('onToken', tokenHandler);
+      window.removeEventListener("done", streamHandler);
+    };
   }, [activeThread?.id, addMessage]);
 
   useEffect(() => {
@@ -75,41 +73,53 @@ export const ChatInterface: React.FC = () => {
   }, []);
 
   const handleCreateNewThread = () => {
-    createNewThread();
+    createThread("New Chat");
     setIsSidebarOpen(false);
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSendMessage = async (message: string) => {
+    if (!message.trim() || isLoading) return;
+
+    // Clear any previous errors
+    setModelError(null);
+
+    // Reset and initialize new hydrator
+    if (hydratorRef.current) {
+      hydratorRef.current = null;
+    }
+
+    if (newMessageRef.current) {
+      newMessageRef.current.innerHTML = '';
+    }
 
     hydratorRef.current = new MessageHydrator(newMessageRef.current!);
-
-    await processMessage();
-  };
-
-  const processMessage = async () => {
-    setInput('');
-    setModelError(null);
 
     if (!activeThread) {
       createThread("New Chat", [{
         id: crypto.randomUUID(),
         role: "user",
-        content: input
+        content: message
       }]);
     } else {
       addMessage(activeThread.id, {
         role: "user",
-        content: input
+        content: message
       });
     }
 
     try {
-      await generateStreamingResponse(input);
+      await generateStreamingResponse(message);
     } catch (error) {
       console.error('Error generating response:', error);
       setModelError('Failed to generate response. Please try again.');
+
+      // Clean up on error
+      if (hydratorRef.current) {
+        hydratorRef.current = null;
+      }
+      if (newMessageRef.current) {
+        newMessageRef.current.innerHTML = '';
+      }
     }
   };
 
@@ -165,29 +175,11 @@ export const ChatInterface: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4" id="message-list">
           <MessageList messages={activeThread?.messages ?? []}>
           </MessageList>
-          <div ref={newMessageRef}></div>
+          <div className='space-y-4' ref={newMessageRef}></div>
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t p-2 sm:p-4 bg-white">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={!isLoading ? "Type your message..." : "Initializing model..."}
-              className="flex-1 rounded-lg border p-2 focus:outline-none focus:border-blue-500"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-            >
-              {isLoading ? 'Generating...' : 'Send'}
-            </button>
-          </form>
-        </div>
+        <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
       </div>
 
       {isSidebarOpen && (

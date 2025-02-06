@@ -16,7 +16,7 @@ interface ThreadContextType {
     threads: Thread[];
     activeThread: Thread | null;
     setActiveThread: (thread: Thread | null) => void;
-    createThread: (title: string, messages: Message[]) => Thread;
+    createThread: (title: string, messages?: Message[]) => Thread;
     addMessage: (threadId: string, message: Omit<Message, 'id' | 'timestamp'>) => Message | null;
     updateMessage: (threadId: string, messageId: string, content: string) => void;
     deleteThread: (threadId: string) => void;

@@ -6,11 +6,14 @@ module.exports = {
   ],
   theme: {
     extend: {
-      colors: {
-        // Add custom colors here if needed
+      keyframes: {
+        gradient: {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
       },
-      fontFamily: {
-        // Add custom fonts here if needed
+      animation: {
+        gradient: 'gradient 4s linear infinite',
       },
     },
   },
