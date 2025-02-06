@@ -63,8 +63,6 @@ export const ChatInterface: React.FC = () => {
     const handleStreamFinished = () => {
       if (!hydratorRef.current) return;
 
-      console.log('done')
-
       const finalMessage = hydratorRef.current.getAndClearBuffer();
 
       if (newMessageRef.current) {
