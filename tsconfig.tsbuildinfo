@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/index.tsx","./src/components/chatinterface.tsx","./src/components/modelloadingindicator.tsx","./src/hooks/usechatthreads.ts","./src/hooks/usechattoken.ts","./src/services/modelservice.tsx","./src/utils/domtokenparser.ts","./src/workers/modelworker.ts"],"version":"5.7.3"}
