@@ -49,7 +49,7 @@ export const ChatInterface: React.FC = () => {
   console.log(activeThread?.id, streamingThreadId);
 
   useEffect(() => {
-    if (activeThread!.id !== streamingThreadId) {
+    if (activeThread?.id !== streamingThreadId) {
       if (newMessageRef.current) {
         newMessageRef.current.innerHTML = '';
       }

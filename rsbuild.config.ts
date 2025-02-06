@@ -17,7 +17,7 @@ const pluginWithZephyr = (): RsbuildPlugin => {
 export default defineConfig({
   plugins: [
     pluginReact(),
-    //pluginWithZephyr()
+    pluginWithZephyr()
   ],
   html: {
     title: 'React App',
