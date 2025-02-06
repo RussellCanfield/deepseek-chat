@@ -5,23 +5,38 @@ import { MessageHydrator } from '../services/MessageHydrator';
 import { useThreadContext } from '../contexts/ThreadContext';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ChatBubbleLeftIcon,
+  XMarkIcon,
+  Bars3Icon,
+} from '@heroicons/react/24/outline';
+import { ThreadList } from './ThreadList';
 
 export const ChatInterface: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const newMessageRef = useRef<HTMLDivElement>(null);
   const hydratorRef = useRef<MessageHydrator | null>(null);
 
   const {
-    threads,
     activeThread,
-    setActiveThread,
     createThread,
-    addMessage
+    addMessage,
   } = useThreadContext();
 
   const { initializeModel, generateStreamingResponse, loadingProgress, isLoading } = useModel();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 1024);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleWorkerMessage = (event: CustomEvent<string>) => {
@@ -45,6 +60,7 @@ export const ChatInterface: React.FC = () => {
       });
 
       hydratorRef.current = null;
+      setIsGenerating(false);
     };
 
     const tokenHandler = handleWorkerMessage as EventListener;
@@ -72,18 +88,24 @@ export const ChatInterface: React.FC = () => {
     initModel();
   }, []);
 
+  useEffect(() => {
+    if (modelError && isGenerating) {
+      setIsGenerating(false);
+    }
+  }, [modelError]);
+
   const handleCreateNewThread = () => {
     createThread("New Chat");
-    setIsSidebarOpen(false);
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim() || isLoading) return;
 
-    // Clear any previous errors
     setModelError(null);
 
-    // Reset and initialize new hydrator
     if (hydratorRef.current) {
       hydratorRef.current = null;
     }
@@ -92,7 +114,9 @@ export const ChatInterface: React.FC = () => {
       newMessageRef.current.innerHTML = '';
     }
 
-    hydratorRef.current = new MessageHydrator(newMessageRef.current!);
+    setIsGenerating(true);
+
+    hydratorRef.current = new MessageHydrator(newMessageRef.current!, false);
 
     if (!activeThread) {
       createThread("New Chat", [{
@@ -113,7 +137,6 @@ export const ChatInterface: React.FC = () => {
       console.error('Error generating response:', error);
       setModelError('Failed to generate response. Please try again.');
 
-      // Clean up on error
       if (hydratorRef.current) {
         hydratorRef.current = null;
       }
@@ -124,70 +147,82 @@ export const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-[72px] flex bg-gray-100">
-      <button
+    <div className="fixed inset-x-0 bottom-0 top-[72px] flex bg-gradient-to-br from-gray-50 to-gray-100">
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="lg:hidden fixed top-[84px] sm:top-[100px] left-4 z-50 p-2 bg-gray-800 text-white rounded-lg"
+        className="lg:hidden fixed top-[84px] sm:top-[100px] left-4 z-50 p-2 bg-gray-800 text-white rounded-lg shadow-lg hover:bg-gray-700 transition-colors duration-200"
       >
-        {isSidebarOpen ? '✕' : '☰'}
-      </button>
+        {isSidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
+      </motion.button>
 
-      <div
-        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:translate-x-0 fixed lg:static w-64 h-full bg-gray-800 transition-transform duration-300 ease-in-out z-40 flex flex-col pt-8 p-4`}
+      <motion.div
+        initial={false}
+        animate={{
+          x: isSidebarOpen ? 0 : -320,
+          transition: {
+            type: "spring",
+            stiffness: 300,
+            damping: 30
+          }
+        }}
+        className={`fixed lg:relative w-80 h-full bg-gray-800 z-40 shadow-xl transform ${window.innerWidth >= 1024 ? 'translate-x-0' : ''
+          }`}
       >
-        <div className="flex flex-col h-full">
-          <button
+        <div className="flex flex-col h-full p-4 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleCreateNewThread}
-            className="w-full bg-blue-600 text-white rounded-lg p-2 mb-4 hover:bg-blue-700 transition-colors"
+            className="w-full bg-blue-600 text-white rounded-lg p-3 mb-6 hover:bg-blue-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-md"
           >
-            New Chat
-          </button>
-          <div className="flex-1 overflow-y-auto space-y-2">
-            {threads.map(thread => (
-              <button
-                key={thread.id}
-                onClick={() => {
-                  setActiveThread(thread)
-                }}
-                className={`w-full text-left p-2 rounded-lg ${activeThread?.id === thread.id
-                  ? 'bg-blue-600 text-white'
-                  : 'hover:bg-gray-700 text-gray-300'
-                  } transition-colors`}
-              >
-                {thread.title || 'Untitled Chat'}
-              </button>
-            ))}
-          </div>
+            <ChatBubbleLeftIcon className="w-5 h-5" />
+            <span className="font-medium">New Chat</span>
+          </motion.button>
+          <ThreadList
+            onThreadSelect={() => {
+              if (window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
+            className="flex-1"
+          />
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex-1 flex flex-col h-full">
-        {isLoading && (
-          <ModelLoadingIndicator progress={loadingProgress} />
-        )}
+      <div className="flex-1 flex flex-col h-full relative">
+        <AnimatePresence>
+          {isLoading && <ModelLoadingIndicator progress={loadingProgress} />}
+        </AnimatePresence>
 
         {modelError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-md relative mb-4 mx-4 mt-4">
             {modelError}
           </div>
         )}
+
         <div className="flex-1 overflow-y-auto p-4" id="message-list">
-          <MessageList messages={activeThread?.messages ?? []}>
-          </MessageList>
-          <div className='space-y-4' ref={newMessageRef}></div>
+          <MessageList messages={activeThread?.messages ?? []} />
+          <div className="flex justify-start" ref={newMessageRef}></div>
           <div ref={messagesEndRef} />
         </div>
 
-        <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+        <ChatInput onSendMessage={handleSendMessage} isLoading={isGenerating} />
       </div>
 
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {isSidebarOpen && window.innerWidth < 1024 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

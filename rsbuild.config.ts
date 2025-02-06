@@ -1,9 +1,23 @@
-import { defineConfig } from '@rsbuild/core';
+import { defineConfig, RsbuildPlugin } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
+import { withZephyr } from 'zephyr-rspack-plugin';
+
+const pluginWithZephyr = (): RsbuildPlugin => {
+  return {
+    name: "zephyr-rsbuild-plugin",
+    setup: (api) => {
+      api.modifyRspackConfig(async (config, { mergeConfig }) => {
+        const zephyrConfig = await withZephyr()(config);
+        mergeConfig(zephyrConfig);
+      });
+    }
+  };
+};
 
 export default defineConfig({
   plugins: [
-    pluginReact()
+    pluginReact(),
+    pluginWithZephyr()
   ],
   html: {
     title: 'React App',

@@ -4,12 +4,19 @@ export interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
+    timestamp?: number;
 }
 
 export interface Thread {
     id: string;
     title: string;
     messages: Message[];
+    isPinned?: boolean;
+    isArchived?: boolean;
+    lastUpdated: number;
+    createdAt: number;
+    category?: string;
+    summary?: string;
 }
 
 interface ThreadContextType {
@@ -17,11 +24,17 @@ interface ThreadContextType {
     activeThread: Thread | null;
     setActiveThread: (thread: Thread | null) => void;
     createThread: (title: string, messages?: Message[]) => Thread;
-    addMessage: (threadId: string, message: Omit<Message, 'id' | 'timestamp'>) => Message | null;
+    addMessage: (threadId: string, message: Omit<Message, 'id'>) => Message | null;
     updateMessage: (threadId: string, messageId: string, content: string) => void;
     deleteThread: (threadId: string) => void;
     clearThreadMessages: (threadId: string) => void;
     updateThreadTitle: (threadId: string, title: string) => void;
+    pinThread: (threadId: string) => void;
+    archiveThread: (threadId: string) => void;
+    updateThreadCategory: (threadId: string, category: string) => void;
+    updateThreadSummary: (threadId: string, summary: string) => void;
+    getFilteredThreads: (filter: { isPinned?: boolean; isArchived?: boolean; category?: string }) => Thread[];
+    searchThreads: (query: string) => Thread[];
 }
 
 const ThreadContext = createContext<ThreadContextType | null>(null);
@@ -49,10 +62,15 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, [activeThread]);
 
     const createThread = (title: string, messages: Message[] = []) => {
+        const now = Date.now();
         const newThread: Thread = {
             id: crypto.randomUUID(),
-            messages,
+            messages: messages.map(m => ({ ...m, timestamp: now })),
             title,
+            createdAt: now,
+            lastUpdated: now,
+            isPinned: false,
+            isArchived: false
         };
 
         setThreads(prev => [newThread, ...prev]);
@@ -60,13 +78,15 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return newThread;
     };
 
-    const addMessage = (threadId: string, message: Omit<Message, 'id' | 'timestamp'>) => {
+    const addMessage = (threadId: string, message: Omit<Message, 'id'>) => {
         const threadIndex = threads.findIndex(t => t.id === threadId);
         if (threadIndex === -1) return null;
 
+        const now = Date.now();
         const newMessage: Message = {
             ...message,
             id: crypto.randomUUID(),
+            timestamp: now,
         };
 
         setThreads(prev => {
@@ -74,15 +94,16 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             updated[threadIndex] = {
                 ...updated[threadIndex],
                 messages: [...updated[threadIndex].messages, newMessage],
+                lastUpdated: now,
             };
             return updated;
         });
 
-        // Update activeThread if this message belongs to it
         if (activeThread?.id === threadId) {
             setActiveThread(prev => prev ? {
                 ...prev,
                 messages: [...prev.messages, newMessage],
+                lastUpdated: now,
             } : null);
         }
 
@@ -90,6 +111,7 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const updateMessage = (threadId: string, messageId: string, content: string) => {
+        const now = Date.now();
         setThreads(prev => {
             const threadIndex = prev.findIndex(t => t.id === threadId);
             if (threadIndex === -1) return prev;
@@ -101,8 +123,9 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             updated[threadIndex] = {
                 ...updated[threadIndex],
                 messages: updated[threadIndex].messages.map(m =>
-                    m.id === messageId ? { ...m, content, isStreaming: false } : m
+                    m.id === messageId ? { ...m, content, timestamp: now } : m
                 ),
+                lastUpdated: now,
             };
 
             return updated;
@@ -117,6 +140,7 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const clearThreadMessages = (threadId: string) => {
+        const now = Date.now();
         setThreads(prev => {
             const threadIndex = prev.findIndex(t => t.id === threadId);
             if (threadIndex === -1) return prev;
@@ -125,12 +149,14 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             updated[threadIndex] = {
                 ...updated[threadIndex],
                 messages: [],
+                lastUpdated: now,
             };
             return updated;
         });
     };
 
     const updateThreadTitle = (threadId: string, title: string) => {
+        const now = Date.now();
         setThreads(prev => {
             const threadIndex = prev.findIndex(t => t.id === threadId);
             if (threadIndex === -1) return prev;
@@ -139,8 +165,85 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             updated[threadIndex] = {
                 ...updated[threadIndex],
                 title,
+                lastUpdated: now,
             };
             return updated;
+        });
+    };
+
+    const pinThread = (threadId: string) => {
+        setThreads(prev => {
+            const threadIndex = prev.findIndex(t => t.id === threadId);
+            if (threadIndex === -1) return prev;
+
+            const updated = [...prev];
+            updated[threadIndex] = {
+                ...updated[threadIndex],
+                isPinned: !updated[threadIndex].isPinned,
+            };
+            return updated;
+        });
+    };
+
+    const archiveThread = (threadId: string) => {
+        setThreads(prev => {
+            const threadIndex = prev.findIndex(t => t.id === threadId);
+            if (threadIndex === -1) return prev;
+
+            const updated = [...prev];
+            updated[threadIndex] = {
+                ...updated[threadIndex],
+                isArchived: !updated[threadIndex].isArchived,
+            };
+            return updated;
+        });
+    };
+
+    const updateThreadCategory = (threadId: string, category: string) => {
+        setThreads(prev => {
+            const threadIndex = prev.findIndex(t => t.id === threadId);
+            if (threadIndex === -1) return prev;
+
+            const updated = [...prev];
+            updated[threadIndex] = {
+                ...updated[threadIndex],
+                category,
+            };
+            return updated;
+        });
+    };
+
+    const updateThreadSummary = (threadId: string, summary: string) => {
+        setThreads(prev => {
+            const threadIndex = prev.findIndex(t => t.id === threadId);
+            if (threadIndex === -1) return prev;
+
+            const updated = [...prev];
+            updated[threadIndex] = {
+                ...updated[threadIndex],
+                summary,
+            };
+            return updated;
+        });
+    };
+
+    const getFilteredThreads = (filter: { isPinned?: boolean; isArchived?: boolean; category?: string }) => {
+        return threads.filter(thread => {
+            if (filter.isPinned !== undefined && thread.isPinned !== filter.isPinned) return false;
+            if (filter.isArchived !== undefined && thread.isArchived !== filter.isArchived) return false;
+            if (filter.category && thread.category !== filter.category) return false;
+            return true;
+        });
+    };
+
+    const searchThreads = (query: string) => {
+        const searchTerm = query.toLowerCase();
+        return threads.filter(thread => {
+            const titleMatch = thread.title.toLowerCase().includes(searchTerm);
+            const contentMatch = thread.messages.some(m => 
+                m.content.toLowerCase().includes(searchTerm)
+            );
+            return titleMatch || contentMatch;
         });
     };
 
@@ -155,8 +258,13 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             deleteThread,
             clearThreadMessages,
             updateThreadTitle,
-        }
-        }>
+            pinThread,
+            archiveThread,
+            updateThreadCategory,
+            updateThreadSummary,
+            getFilteredThreads,
+            searchThreads,
+        }}>
             {children}
         </ThreadContext.Provider>
     );

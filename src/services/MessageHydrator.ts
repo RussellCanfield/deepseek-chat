@@ -9,49 +9,44 @@ export class MessageHydrator {
     private static readonly THINK_START = '<think>';
     private static readonly THINK_END = '</think>';
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, private readonly fromUser = false) {
         this.container = container;
         this.initializeElements();
     }
 
     private initializeElements() {
-        // Match MessageList structure exactly
         this.container.innerHTML = ``;
 
-        const thinkingHTML = `
-         <div class="space-y-4">
-            <div class="flex justify-start">
-                <div class="bg-gray-100 text-gray-900 mr-4 rounded-lg p-4 mb-4 transition-all duration-200" style="display: none;" data-testid="thinking-section">
-                    <button class="relative w-full text-left rounded-lg bg-white px-4 py-2 font-medium hover:bg-gray-50 focus:outline-none flex items-center gap-2 group overflow-hidden before:absolute before:inset-0 before:animate-gradient before:bg-gradient-to-r before:from-blue-400 before:via-blue-500 before:to-blue-600 before:bg-[length:200%_100%] before:p-[1px] before:-m-[1px] before:rounded-lg" 
-                        onclick="this.nextElementSibling.classList.toggle('hidden'); 
-                                this.querySelector('.chevron-right')?.classList.toggle('hidden');
-                                this.querySelector('.chevron-down')?.classList.toggle('hidden');
-                                this.classList.toggle('rounded-b-none')"
-                    >
-                        <span class="relative z-10 w-full h-full rounded-lg flex items-center gap-2">
-                            <svg class="chevron-right w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 4.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L11.586 10 7.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                            <svg class="chevron-down w-4 h-4 hidden text-white" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                            <span class="text-white">Thinking Process</span>
-                        </span>
-                    </button>
-                    <div class="hidden border-x border-b border-gray-100 rounded-b-lg bg-white">
-                        <div class="px-4 py-2 text-sm text-gray-600" data-testid="thinking-content"></div>
-                    </div>
+        const content = `
+    <div class="flex justify-start">  
+        <div class="mt-4 transition-all duration-200 ease-in-out rounded-2xl shadow-sm p-4 border border-gray-100 text-gray-900 mr-4 transform-gpu ${this.fromUser ? 'bg-blue-600 text-white' : 'bg-white text-gray-900'}">
+            <div data-testid="thinking-section" style="display: none;">        
+                <button class="relative w-full text-left rounded-lg bg-white px-4 py-2 font-medium hover:bg-gray-50 focus:outline-none flex items-center gap-2 group overflow-hidden before:absolute before:inset-0 before:animate-gradient before:bg-gradient-to-r before:from-blue-400 before:via-blue-500 before:to-blue-600 before:bg-[length:200%_100%] before:p-[1px] before:-m-[1px] before:rounded-lg" 
+                    onclick="this.nextElementSibling.classList.toggle('hidden'); 
+                            this.querySelector('.chevron-right')?.classList.toggle('hidden');
+                            this.querySelector('.chevron-down')?.classList.toggle('hidden');
+                            this.classList.toggle('rounded-b-none')"
+                >
+                    <span class="relative z-10 w-full h-full rounded-lg flex items-center gap-2">
+                        <svg class="chevron-right w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M7.293 4.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L11.586 10 7.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        <svg class="chevron-down w-4 h-4 hidden text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-white">Thinking Process</span>
+                    </span>
+                </button>
+                <div class="hidden border-x border-b border-gray-100 rounded-b-lg bg-white">
+                    <div class="px-4 py-2 text-sm text-gray-600" data-testid="thinking-content"></div>
                 </div>
             </div>
-        </div>`;
-
-        const responseHTML = `<div class="rounded-lg p-4">
-        <div data-testid="response-content">
+            <div data-testid="response-content" class="mt-1"></div>
         </div>
-</div>`;
+    </div>
+`;
 
-        this.container.insertAdjacentHTML('beforeend', thinkingHTML);
-        this.container.insertAdjacentHTML('beforeend', responseHTML);
+        this.container.insertAdjacentHTML('beforeend', content);
 
         this.thinkingElement = this.container.querySelector('[data-testid="thinking-content"]');
         this.thinkingContent = this.container.querySelector('[data-testid="thinking-section"]');
