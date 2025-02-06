@@ -22,10 +22,10 @@ export interface Thread {
 interface ThreadContextType {
     threads: Thread[];
     activeThread: Thread | null;
+    streamingThreadId: string | null;
     setActiveThread: (thread: Thread | null) => void;
     createThread: (title: string, messages?: Message[]) => Thread;
     addMessage: (threadId: string, message: Omit<Message, 'id'>) => Message | null;
-    updateMessage: (threadId: string, messageId: string, content: string) => void;
     deleteThread: (threadId: string) => void;
     clearThreadMessages: (threadId: string) => void;
     updateThreadTitle: (threadId: string, title: string) => void;
@@ -52,6 +52,8 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const stored = localStorage.getItem(ACTIVE_THREAD_KEY);
         return stored ? JSON.parse(stored) : null;
     });
+
+    const [streamingThreadId, setStreamingThreadId] = useState<string | null>(null);
 
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
@@ -89,6 +91,8 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             timestamp: now,
         };
 
+        setStreamingThreadId(threadId);
+
         setThreads(prev => {
             const updated = [...prev];
             updated[threadIndex] = {
@@ -108,28 +112,6 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         return newMessage;
-    };
-
-    const updateMessage = (threadId: string, messageId: string, content: string) => {
-        const now = Date.now();
-        setThreads(prev => {
-            const threadIndex = prev.findIndex(t => t.id === threadId);
-            if (threadIndex === -1) return prev;
-
-            const updated = [...prev];
-            const messageIndex = updated[threadIndex].messages.findIndex(m => m.id === messageId);
-            if (messageIndex === -1) return prev;
-
-            updated[threadIndex] = {
-                ...updated[threadIndex],
-                messages: updated[threadIndex].messages.map(m =>
-                    m.id === messageId ? { ...m, content, timestamp: now } : m
-                ),
-                lastUpdated: now,
-            };
-
-            return updated;
-        });
     };
 
     const deleteThread = (threadId: string) => {
@@ -240,7 +222,7 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const searchTerm = query.toLowerCase();
         return threads.filter(thread => {
             const titleMatch = thread.title.toLowerCase().includes(searchTerm);
-            const contentMatch = thread.messages.some(m => 
+            const contentMatch = thread.messages.some(m =>
                 m.content.toLowerCase().includes(searchTerm)
             );
             return titleMatch || contentMatch;
@@ -251,10 +233,10 @@ export const ThreadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         <ThreadContext.Provider value={{
             threads,
             activeThread,
+            streamingThreadId,
             setActiveThread,
             createThread,
             addMessage,
-            updateMessage,
             deleteThread,
             clearThreadMessages,
             updateThreadTitle,

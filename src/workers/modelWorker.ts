@@ -133,8 +133,6 @@ class ModelWorker {
         use_cache: true
       });
 
-      console.log('done!')
-
     } catch (error) {
       console.error('Error in streaming response:', error);
       throw error;

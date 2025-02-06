@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { PropsWithChildren } from 'react';
 import { Message } from "../contexts/ThreadContext";
 import { Message as ChatMessage } from "./Message";
 
-const MessageList: React.FC<{ messages: Message[] }> = ({ messages }) => {
+const MessageList: React.FC<{ messages: Message[] } & PropsWithChildren> = ({ messages, children }) => {
     return (
         <div className="space-y-4">
             {messages.map((message) => (
@@ -13,6 +13,7 @@ const MessageList: React.FC<{ messages: Message[] }> = ({ messages }) => {
                     <ChatMessage id={message.id} content={message.content} isUser={message.role === 'user'} />
                 </div>
             ))}
+            {children}
         </div>
     );
 };

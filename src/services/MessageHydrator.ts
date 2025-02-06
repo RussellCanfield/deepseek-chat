@@ -41,7 +41,7 @@ export class MessageHydrator {
                     <div class="px-4 py-2 text-sm text-gray-600" data-testid="thinking-content"></div>
                 </div>
             </div>
-            <div data-testid="response-content" class="mt-1"></div>
+            <div data-testid="response-content"></div>
         </div>
     </div>
 `;
@@ -57,11 +57,14 @@ export class MessageHydrator {
         }
     }
 
-    public appendToken(token: string) {
+    public appendToken(token: string, updateUi = true) {
         if (!token) return;
 
         this.tokenBuffer += token;
-        this.processTokens();
+
+        if (updateUi) {
+            this.processTokens();
+        }
     }
 
     private processTokens() {

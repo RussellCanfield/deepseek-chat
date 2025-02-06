@@ -4,7 +4,6 @@ import {
   PencilIcon,
   TrashIcon,
   StarIcon,
-  ArchiveBoxIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { Thread, useThreadContext } from '../contexts/ThreadContext';
@@ -74,7 +73,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({ onThreadSelect, classNam
   const getThreadPreview = (messages: any[]) => {
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage) return 'No messages';
-    return lastMessage.content.slice(0, 30) + (lastMessage.content.length > 30 ? '...' : '');
+    return lastMessage.content.replace("<think>", "").replace("</think>", "").slice(0, 30) + (lastMessage.content.length > 30 ? '...' : '');
   };
 
   const formatDate = (timestamp: number) => {
@@ -132,8 +131,8 @@ export const ThreadList: React.FC<ThreadListProps> = ({ onThreadSelect, classNam
               exit={{ opacity: 0, y: -20 }}
               whileHover={{ scale: 1.02 }}
               className={`group relative rounded-lg overflow-hidden ${activeThread?.id === thread.id
-                  ? 'bg-blue-600 shadow-lg'
-                  : 'bg-gray-700 hover:bg-gray-600'
+                ? 'bg-blue-600 shadow-lg'
+                : 'bg-gray-700 hover:bg-gray-600'
                 } transition-all duration-200`}
             >
               <button
@@ -156,9 +155,6 @@ export const ThreadList: React.FC<ThreadListProps> = ({ onThreadSelect, classNam
                     />
                   ) : (
                     <div className="flex items-center space-x-2">
-                      {thread.isPinned && (
-                        <StarIcon className="w-4 h-4 text-yellow-400" />
-                      )}
                       <span className={`font-medium ${activeThread?.id === thread.id ? 'text-white' : 'text-gray-200'}`}>
                         {thread.title || 'Untitled Chat'}
                       </span>

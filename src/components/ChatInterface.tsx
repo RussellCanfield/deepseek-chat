@@ -16,7 +16,6 @@ import { ThreadList } from './ThreadList';
 export const ChatInterface: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [modelError, setModelError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const newMessageRef = useRef<HTMLDivElement>(null);
   const hydratorRef = useRef<MessageHydrator | null>(null);
@@ -25,9 +24,10 @@ export const ChatInterface: React.FC = () => {
     activeThread,
     createThread,
     addMessage,
+    streamingThreadId
   } = useThreadContext();
 
-  const { initializeModel, generateStreamingResponse, loadingProgress, isLoading } = useModel();
+  const { initializeModel, generateStreamingResponse, loadingProgress, isLoading, isGenerating } = useModel();
 
   useEffect(() => {
     const handleResize = () => {
@@ -39,14 +39,34 @@ export const ChatInterface: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Add smooth scrolling
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end'
+    });
+  }, [activeThread])
+
+  console.log(activeThread?.id, streamingThreadId);
+
+  useEffect(() => {
+    if (activeThread!.id !== streamingThreadId) {
+      if (newMessageRef.current) {
+        newMessageRef.current.innerHTML = '';
+      }
+    }
+  }, [activeThread, streamingThreadId]);
+
+  useEffect(() => {
     const handleWorkerMessage = (event: CustomEvent<string>) => {
       if (hydratorRef.current) {
-        hydratorRef.current.appendToken(event.detail);
+        hydratorRef.current.appendToken(event.detail, activeThread!.id === streamingThreadId);
       }
     };
 
     const handleStreamFinished = () => {
       if (!hydratorRef.current) return;
+
+      console.log('done')
 
       const finalMessage = hydratorRef.current.getAndClearBuffer();
 
@@ -54,13 +74,12 @@ export const ChatInterface: React.FC = () => {
         newMessageRef.current.innerHTML = '';
       }
 
-      addMessage(activeThread?.id!, {
+      addMessage(streamingThreadId!, {
         role: "assistant",
         content: finalMessage
       });
 
       hydratorRef.current = null;
-      setIsGenerating(false);
     };
 
     const tokenHandler = handleWorkerMessage as EventListener;
@@ -88,12 +107,6 @@ export const ChatInterface: React.FC = () => {
     initModel();
   }, []);
 
-  useEffect(() => {
-    if (modelError && isGenerating) {
-      setIsGenerating(false);
-    }
-  }, [modelError]);
-
   const handleCreateNewThread = () => {
     createThread("New Chat");
     if (window.innerWidth < 1024) {
@@ -113,8 +126,6 @@ export const ChatInterface: React.FC = () => {
     if (newMessageRef.current) {
       newMessageRef.current.innerHTML = '';
     }
-
-    setIsGenerating(true);
 
     hydratorRef.current = new MessageHydrator(newMessageRef.current!, false);
 
@@ -147,7 +158,7 @@ export const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-[72px] flex bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="fixed inset-x-0 bottom-0 top-[92px] flex bg-gradient-to-br from-gray-50 to-gray-100">
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -203,9 +214,12 @@ export const ChatInterface: React.FC = () => {
         )}
 
         <div className="flex-1 overflow-y-auto p-4" id="message-list">
-          <MessageList messages={activeThread?.messages ?? []} />
-          <div className="flex justify-start" ref={newMessageRef}></div>
-          <div ref={messagesEndRef} />
+          <MessageList messages={activeThread?.messages ?? []}>
+            <>
+              <div className="flex justify-start" ref={newMessageRef}></div>
+              <div ref={messagesEndRef} />
+            </>
+          </MessageList>
         </div>
 
         <ChatInput onSendMessage={handleSendMessage} isLoading={isGenerating} />

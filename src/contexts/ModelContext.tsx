@@ -15,6 +15,7 @@ export interface ProgressStatusInfo {
 
 interface ModelContextState {
   isLoading: boolean;
+  isGenerating: boolean;
   error: Error | null;
   loadingProgress?: ProgressStatusInfo;
   initializeModel: () => Promise<void>;
@@ -30,6 +31,7 @@ export const ModelProvider = ({ children }: PropsWithChildren) => {
   const [modelWorker] = useState(() => Comlink.wrap<ModelWorkerType>(worker));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState<ProgressStatusInfo>();
 
   useEffect(() => {
@@ -41,11 +43,15 @@ export const ModelProvider = ({ children }: PropsWithChildren) => {
         setLoadingProgress({ ...progress, name });
         setIsLoading(progress.status !== 'done')
       } else if (type === 'token') {
+        if (!isGenerating) {
+          setIsGenerating(true);
+        }
         const tokenEvent = new CustomEvent('onToken', {
           detail: (event.data as TokenEvent).token
         });
         window.dispatchEvent(tokenEvent);
       } else {
+        setIsGenerating(false);
         window.dispatchEvent(new CustomEvent('done'))
       }
     };
@@ -84,6 +90,7 @@ export const ModelProvider = ({ children }: PropsWithChildren) => {
         isLoading,
         error,
         loadingProgress,
+        isGenerating,
         initializeModel,
         generateStreamingResponse,
       }}
