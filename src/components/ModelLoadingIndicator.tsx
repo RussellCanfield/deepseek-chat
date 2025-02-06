@@ -9,8 +9,12 @@ interface ModelLoadingIndicatorProps {
 export const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({ progress }) => {
   const calculatePercentage = (): number => {
     if (!progress?.progress) return 0;
-    const percentage = progress.progress * 100;
-    return Number.isNaN(percentage) ? 0 : Math.min(Math.round(percentage), 100);
+    if (progress.status === 'done') return 0;
+
+    // Since progress is already in decimal form (e.g., 0.13569),
+    // we just need to multiply by 100 to get the percentage
+    const percentage = Math.round(progress.progress);
+    return Number.isNaN(percentage) ? 0 : Math.min(percentage, 100);
   };
 
   const percentage = calculatePercentage();
@@ -30,7 +34,7 @@ export const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({ pr
         className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-[90%] sm:w-full mx-4 shadow-2xl border border-gray-100"
       >
         <div className="text-center">
-          <motion.h2 
+          <motion.h2
             initial={{ y: -10 }}
             animate={{ y: 0 }}
             className="text-xl sm:text-2xl font-semibold mb-4 text-gray-800"
@@ -59,7 +63,7 @@ export const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({ pr
               />
             </div>
           </div>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-gray-600 text-sm mt-2"

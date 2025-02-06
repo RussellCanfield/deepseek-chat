@@ -29,6 +29,8 @@ export const ChatInterface: React.FC = () => {
 
   const { initializeModel, generateStreamingResponse, loadingProgress, isLoading, isGenerating } = useModel();
 
+  console.log(loadingProgress);
+
   useEffect(() => {
     const handleResize = () => {
       setIsSidebarOpen(window.innerWidth >= 1024);
